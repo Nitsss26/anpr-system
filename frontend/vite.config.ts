@@ -10,10 +10,11 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    host: "0.0.0.0", // Allow external connections
+    port: 6000,
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://backend:6001", // Use Docker service name
         changeOrigin: true,
       },
     },

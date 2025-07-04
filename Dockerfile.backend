@@ -1,0 +1,65 @@
+# Backend Dockerfile
+FROM node:18-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libavcodec-dev \
+    libavformat-dev \
+    libswscale-dev \
+    libv4l-dev \
+    libxvidcore-dev \
+    libx264-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libatlas-base-dev \
+    gfortran \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy backend package files
+COPY backend/package*.json ./
+RUN npm ci --only=production
+
+# Copy Python requirements and install
+COPY backend/python/requirements.txt ./python/
+RUN pip3 install --no-cache-dir -r python/requirements.txt
+
+# Copy backend source code
+COPY backend/ ./
+
+# Create necessary directories
+RUN mkdir -p uploads/videos temp logs python/models
+
+# Download and setup AI models
+RUN python3 python/setup_models.py
+
+# Create non-root user
+RUN groupadd -r anpr && useradd -r -g anpr anpr
+RUN chown -R anpr:anpr /app
+USER anpr
+
+# Expose port
+EXPOSE 6001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:6001/api/health || exit 1
+
+# Start the application
+CMD ["npm", "start"]
